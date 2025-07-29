@@ -1,0 +1,28 @@
+# Environment files
+.env
+.env.*
+
+# IDE/Editor folders
+.history/
+.idea/
+.vscode/
+__pycache__/
+
+# Python-specific
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# Logs and databases
+*.log
+*.sqlite
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Dependency directories (if applicable)
+venv/
+env/
