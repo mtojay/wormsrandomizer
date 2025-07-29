@@ -1,25 +1,58 @@
 # Discord Worms Map Randomizer Bot
 
-An animated Discord bot that randomly selects 3 Worms maps through a spinning wheel-style animation.
+An animated Discord bot that selects maps for a tournament-style Worms match through spinning wheel animations.
 
 ## Features
 
+- **Tournament Format**: 2 matches with strategic map selection
+- **Tag-Based Pairing**: Maps with compatible themes face off in Match 2
 - **Animated Selection**: Visual spinning pointer with progressive slowdown
-- **3-Round Selection**: Picks 3 unique maps without duplicates
-- **8 Worms Maps**: Burg, Haus, Rakete, Baum, Pilz, Esel, Schiff, Reaktor
-- **Slash Command**: Modern `/worms` command interface
+- **External Configuration**: Easy map management via `maps.json`
+- **Development Mode**: Fast animations for testing
 - **Docker Ready**: Containerized for easy deployment
 
-## Maps Included
+## Tournament Format
 
-- 🏰 Burg
-- 🏠 Haus
-- 🚀 Rakete
-- 🌳 Baum
-- 🍄 Pilz
-- 🐴 Esel
-- 🚢 Schiff
-- ☢️ Reaktor
+### Match Structure
+- **🥇 Match 1**: Both teams play the same map
+- **🥈 Match 2**: Winner chooses between two tag-compatible options
+
+### Map Selection Process
+1. **Spin 1**: Selects Match 1 map (any available map)
+2. **Spin 2**: Selects Match 2 Option A (from remaining maps)  
+3. **Spin 3**: Selects Match 2 Option B (compatible tags with Option A)
+
+## Maps & Tags
+
+Maps are configured in `maps.json` with tags for strategic pairing:
+
+```json
+{
+  "maps": [
+    {
+      "emoji": "🏰",
+      "name": "Burg",
+      "tags": ["large", "fortress"]
+    },
+    {
+      "emoji": "🌳", 
+      "name": "Baum",
+      "tags": ["large", "nature"]
+    }
+  ]
+}
+```
+
+### Default Maps Included
+
+- 🏰 **Burg** - `[large, fortress]`
+- 🏠 **Haus** - `[small, cozy]`
+- 🚀 **Rakete** - `[mid, tech]`
+- 🌳 **Baum** - `[large, nature]`
+- 🍄 **Pilz** - `[small, nature]`
+- 🐴 **Esel** - `[small, mid]`
+- 🚢 **Schiff** - `[mid, water]`
+- ☢️ **Reaktor** - `[large, tech]`
 
 ## Quick Start
 
@@ -48,9 +81,10 @@ An animated Discord bot that randomly selects 3 Worms maps through a spinning wh
    ```
    DISCORD_BOT_TOKEN=your_token_here
    ```
-3. Run with Docker Compose:
+3. Ensure `maps.json` is in the same directory
+4. Run with Docker Compose:
    ```bash
-   docker-compose up -d
+   docker-compose up -d --build
    ```
 
 #### Option 2: Direct Python
@@ -59,11 +93,12 @@ An animated Discord bot that randomly selects 3 Worms maps through a spinning wh
    ```bash
    pip install -r requirements.txt
    ```
-2. Set environment variable:
+2. Ensure `maps.json` is in the same directory as `bot.py`
+3. Set environment variable:
    ```bash
    export DISCORD_BOT_TOKEN="your_token_here"
    ```
-3. Run the bot:
+4. Run the bot:
    ```bash
    python bot.py
    ```
@@ -74,105 +109,81 @@ An animated Discord bot that randomly selects 3 Worms maps through a spinning wh
 # Build the image
 docker build -t worms-bot .
 
-# Run the container
+# Run the container with volume mount
 docker run -d \
   --name worms-bot \
   -e DISCORD_BOT_TOKEN="your_token_here" \
+  -v $(pwd)/maps.json:/app/maps.json:ro \
   --restart unless-stopped \
   worms-bot
 ```
 
 ## Usage
 
-1. Invite the bot to your Discord server
-2. Use the `/worms` slash command in any channel
-3. Watch the animated selection process
-4. Get your 3 selected maps for your Worms battle!
-
-## Animation Details
-
-- **Speed**: Starts at 100ms, progressively slows down
-- **Duration**: 15-25 animation steps with final slowdown
-- **Visual**: Text-based pointer (👉) moving through map list
-- **Rounds**: 3 consecutive selections, removing chosen maps
+1. Use the `/worms` slash command in any channel
+2. Watch the 3 animated spins
+3. Get your tournament setup with 2 matches!
 
 ## Example Output
 
 ```
-🎯 Round 1 - Selecting Map...
+🎉 Worms Match Setup Complete!
 
-     🏰 Burg
-  👉 🏠 Haus
-     🚀 Rakete
-     🌳 Baum
-     🍄 Pilz
-     🐴 Esel
-     🚢 Schiff
-     ☢️ Reaktor
+🥇 Match 1: Both teams play
+🔹 🌳 Baum 🌳
 
-✅ Selected: 🏠 Haus
-```
+🥈 Match 2: Winner chooses
+🔸 🍄 Pilz 🍄  ⚔️  🏠 Haus 🏠 🔸
 
-Final result:
-```
-🎉 All Selected Maps:
+🏷️ Connected by: small
 
-1. 🏠 Haus
-2. 🚀 Rakete  
-3. ☢️ Reaktor
-
-🎯 Good luck in your Worms battle!
+🎯 Good luck in your Worms battles!
 ```
 
 ## Configuration
 
+### Maps Configuration
+
+Edit `maps.json` to customize available maps. After changes:
+
+**For Python:** Restart the bot
+**For Docker:** Restart the container (maps.json is mounted as volume)
+
+```bash
+docker-compose restart worms-bot
+```
+
+### Development Mode
+
+For faster testing during development:
+
+```bash
+# Faster animations
+DEV_MODE=1 python bot.py
+
+# With Docker
+docker-compose up -d --build -e DEV_MODE=1
+```
+
 ### Environment Variables
 
 - `DISCORD_BOT_TOKEN`: Your Discord bot token (required)
+- `DEV_MODE`: Enable fast animations for development (optional)
 
-### Customization
+### Animation Customization
 
 You can modify these values in `bot.py`:
 
-- **Maps**: Edit `WORMS_MAPS` list to change available maps
-- **Animation Speed**: Adjust `base_delay` and `delay_increment`
-- **Spin Count**: Modify `total_spins` range
-- **Selection Rounds**: Change the range in the main loop
-
-## Error Handling
-
-The bot includes comprehensive error handling for:
-
-- Network issues during animation
-- Discord API rate limits
-- Missing permissions
-- Invalid tokens
-- Message editing failures
-
-## Troubleshooting
-
-### Bot doesn't respond to `/worms`
-
-1. Check bot permissions (Send Messages, Use Slash Commands)
-2. Wait a few minutes for slash commands to sync
-3. Try kicking and re-inviting the bot
-
-### Animation stops mid-way
-
-- Usually due to Discord rate limits or network issues
-- Bot will attempt to recover and show final results
-
-### Docker container won't start
-
-1. Verify your `.env` file has the correct token
-2. Check Docker logs: `docker-compose logs worms-bot`
-3. Ensure no port conflicts
+- **Normal mode**: 15-22 spins, 40ms start
+- **Dev mode**: 5-8 spins, 20ms start
+- **Curve factor**: Adjust `progress ** 2.5` for different slowdown styles
 
 ## File Structure
 
 ```
 worms-bot/
 ├── bot.py                 # Main bot code
+├── maps.json             # Map configuration
 ├── requirements.txt       # Python dependencies
 ├── Dockerfile            # Docker image configuration
 ├── docker-compose.yml    # Docker Compose setup
@@ -180,14 +191,27 @@ worms-bot/
 └── README.md            # This documentation
 ```
 
-## Support
+## Troubleshooting
 
-For issues or questions:
+### Bot doesn't respond to `/worms`
 
-1. Check the console/logs for error messages
-2. Verify your Discord bot token is correct
-3. Ensure the bot has proper permissions in your server
-4. Try restarting the bot
+1. Check bot permissions (Send Messages, Use Slash Commands)
+2. Wait a few minutes for slash commands to sync
+3. Try restarting the bot
+
+### Maps not loading
+
+1. Verify `maps.json` exists in the correct location
+2. Check JSON syntax is valid
+3. Ensure file is accessible by the bot process
+4. Check console for error messages
+
+### Docker container won't start
+
+1. Verify your `.env` file has the correct token
+2. Ensure `maps.json` exists in the same directory
+3. Check Docker logs: `docker-compose logs worms-bot`
+4. Verify no port conflicts
 
 ## License
 

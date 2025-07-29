@@ -4,6 +4,7 @@ from discord.ext import commands
 import asyncio
 import random
 import os
+import json
 from typing import List, Tuple, Optional
 
 # Bot setup
@@ -11,50 +12,92 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Worms maps with emojis
-WORMS_MAPS = [
-    ("🏰", "Burg"),
-    ("🏠", "Haus"),
-    ("🚀", "Rakete"),
-    ("🌳", "Baum"),
-    ("🍄", "Pilz"),
-    ("🐴", "Esel"),
-    ("🚢", "Schiff"),
-    ("☢️", "Reaktor")
-]
+def load_maps():
+    """Load maps from maps.json file"""
+    try:
+        with open('maps.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Convert to tuple format for compatibility
+            return [(map_data['emoji'], map_data['name'], map_data['tags']) 
+                   for map_data in data['maps']]
+    except FileNotFoundError:
+        print("Error: maps.json file not found!")
+        print("Please create maps.json with your map data.")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in maps.json: {e}")
+        return []
+    except Exception as e:
+        print(f"Error loading maps: {e}")
+        return []
+
+# Load maps from JSON file
+WORMS_MAPS = load_maps()
 
 class WormsMapSelector:
     def __init__(self):
-        self.available_maps = WORMS_MAPS.copy()
-        random.shuffle(self.available_maps)  # Randomize map order each time
-        self.selected_maps = []
+        if not WORMS_MAPS:
+            raise ValueError("No maps loaded! Check your maps.json file.")
+        self.all_maps = WORMS_MAPS.copy()
+        random.shuffle(self.all_maps)
+        self.match1_map = None
+        self.match2_map_a = None
+        self.match2_map_b = None
     
-    def format_map_list(self, pointer_index=-1):
-        """Format the map list with optional pointer"""
+    def get_maps_with_shared_tags(self, reference_map):
+        """Get maps that share at least one tag with the reference map"""
+        reference_tags = set(reference_map[2])  # Get tags from reference map
+        compatible_maps = []
+        
+        for map_data in self.all_maps:
+            if map_data == reference_map:  # Skip the reference map itself
+                continue
+            map_tags = set(map_data[2])
+            # Check if they share any tags
+            if reference_tags.intersection(map_tags):
+                compatible_maps.append(map_data)
+        
+        return compatible_maps if compatible_maps else [m for m in self.all_maps if m != reference_map]
+    
+    def format_map_list(self, available_maps, pointer_index=-1):
+        """Format the map list with optional pointer and styled tags"""
         lines = []
-        for i, (emoji, name) in enumerate(self.available_maps):
+        for i, (emoji, name, tags) in enumerate(available_maps):
+            # Create pill-style tags
+            tag_pills = " ".join([f"`{tag}`" for tag in tags])
+            
             if i == pointer_index:
-                lines.append(f"  👉 {emoji} {name}")
+                lines.append(f"  👉 {emoji} **{name}** {tag_pills}")
             else:
-                lines.append(f"     {emoji} {name}")
+                lines.append(f"     {emoji} **{name}** {tag_pills}")
         return "\n".join(lines)
     
-    async def animate_selection(self, message, round_num):
+    async def animate_selection(self, message, round_num, available_maps, title_text):
         """Animate the selection process and return selected map"""
-        if not self.available_maps:
-            return None, None
+        if not available_maps:
+            return None
         
-        # Animation parameters
-        total_spins = random.randint(10, 15)  # More spins for smoother curve
-        base_delay = 0.05  # Starting delay (50ms)
+        # Check for development mode
+        dev_mode = os.getenv('DEV_MODE') or os.getenv('TESTING_MODE')
+        
+        if dev_mode:
+            # Super fast for development
+            total_spins = random.randint(5, 8)
+            base_delay = 0.02
+            max_additional_delay = 0.3
+        else:
+            # Faster than before but still smooth
+            total_spins = random.randint(4, 8)  # Reduced from 20-30
+            base_delay = 0.04  # Reduced from 0.05
+            max_additional_delay = 0.6  # Reduced from 0.8
         
         # Animation loop with exponential slowdown curve
         for spin in range(total_spins):
-            pointer_index = spin % len(self.available_maps)
+            pointer_index = spin % len(available_maps)
             
             # Create animation content
-            content = f"🎯 **Round {round_num}** - Selecting Map...\n\n"
-            content += self.format_map_list(pointer_index)
+            content = f"🎯 **{title_text}**\n\n"
+            content += self.format_map_list(available_maps, pointer_index)
             
             # Edit message with current frame
             try:
@@ -63,22 +106,19 @@ class WormsMapSelector:
                 break
             
             # Smooth exponential curve for realistic spin slowdown
-            # Progress from 0.0 to 1.0 through the animation
             progress = spin / (total_spins - 1)
-            
-            # Exponential curve: starts fast, smooth gradual slowdown
-            curve_factor = progress ** 2.5  # Adjust curve steepness (higher = more dramatic)
-            current_delay = base_delay + (curve_factor * 0.8)  # Max additional delay
+            curve_factor = progress ** 2.5
+            current_delay = base_delay + (curve_factor * max_additional_delay)
             
             await asyncio.sleep(current_delay)
         
         # Final selection
-        final_index = (total_spins - 1) % len(self.available_maps)
-        selected_map = self.available_maps[final_index]
+        final_index = (total_spins - 1) % len(available_maps)
+        selected_map = available_maps[final_index]
         
         # Show final selection
-        final_content = f"🎯 **Round {round_num}** - Selected!\n\n"
-        final_content += self.format_map_list(final_index)
+        final_content = f"🎯 **{title_text}**\n\n"
+        final_content += self.format_map_list(available_maps, final_index)
         final_content += f"\n\n✅ **Selected: {selected_map[0]} {selected_map[1]}**"
         
         try:
@@ -86,13 +126,10 @@ class WormsMapSelector:
         except discord.NotFound:
             pass
         
-        # Remove selected map and add to results
-        self.available_maps.remove(selected_map)
-        self.selected_maps.append(selected_map)
-        
-        await asyncio.sleep(1.5)  # Pause before next round
-        
-        return selected_map[0], selected_map[1]
+        # Shorter pause between rounds in dev mode
+        pause_time = 0.5 if dev_mode else 1.2  # Reduced from 1.5
+        await asyncio.sleep(pause_time)
+        return selected_map
 
 @bot.event
 async def on_ready():
@@ -103,9 +140,9 @@ async def on_ready():
     except Exception as e:
         print(f'Failed to sync commands: {e}')
 
-@bot.tree.command(name='worms', description='Select 3 random Worms maps with animated selection')
+@bot.tree.command(name='worms', description='Select maps for 2 Worms matches with tag-based pairing')
 async def worms_command(interaction: discord.Interaction):
-    """Handle the /worms slash command"""
+    """Handle the /worms slash command with new match structure"""
     
     # Defer the response since animation will take time
     await interaction.response.defer()
@@ -114,25 +151,65 @@ async def worms_command(interaction: discord.Interaction):
     selector = WormsMapSelector()
     
     # Send initial message
-    initial_content = "🎮 **Worms Map Randomizer**\n\nPreparing selection..."
+    initial_content = "🎮 **Worms Match Randomizer**\n\nPreparing map selection..."
     message = await interaction.followup.send(content=initial_content)
     
     await asyncio.sleep(1)
     
-    # Run 3 selection rounds
     try:
-        for round_num in range(1, 4):
-            emoji, name = await selector.animate_selection(message, round_num)
-            if not emoji:  # Safety check
-                break
+        # SPIN 1: Match 1 map (both teams play this map)
+        selector.match1_map = await selector.animate_selection(
+            message, 1, selector.all_maps, "Spin 1 - Match 1 Map (Both Teams)"
+        )
+        
+        # Remove Match 1 map from available maps
+        remaining_maps = [m for m in selector.all_maps if m != selector.match1_map]
+        
+        # SPIN 2: First map for Match 2
+        selector.match2_map_a = await selector.animate_selection(
+            message, 2, remaining_maps, "Spin 2 - Match 2 Option A"
+        )
+        
+        # SPIN 3: Second map for Match 2 (tag-based selection)
+        compatible_maps = selector.get_maps_with_shared_tags(selector.match2_map_a)
+        # Remove maps already selected
+        compatible_maps = [m for m in compatible_maps if m not in [selector.match1_map, selector.match2_map_a]]
+        
+        if compatible_maps:
+            spin3_title = f"Spin 3 - Match 2 Option B (Compatible with {selector.match2_map_a[1]})"
+        else:
+            # Fallback if no compatible maps
+            compatible_maps = [m for m in selector.all_maps if m not in [selector.match1_map, selector.match2_map_a]]
+            spin3_title = "Spin 3 - Match 2 Option B (Random)"
+        
+        selector.match2_map_b = await selector.animate_selection(
+            message, 3, compatible_maps, spin3_title
+        )
         
         # Create final summary
-        if len(selector.selected_maps) == 3:
-            final_summary = "🎉 **All Selected Maps:**\n\n"
-            for i, (emoji, name) in enumerate(selector.selected_maps, 1):
-                final_summary += f"{i}. {emoji} {name}\n"
+        if selector.match1_map and selector.match2_map_a and selector.match2_map_b:
+            final_summary = "🎉 **Worms Match Setup Complete!**\n\n"
+            final_summary += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             
-            final_summary += "\n🎯 Good luck in your Worms battle!"
+            # Match 1 - Both teams same map
+            final_summary += "# 🥇 Match 1\n"
+            final_summary += "### Both teams play\n\n"
+            final_summary += f"## 🔹 {selector.match1_map[0]} **{selector.match1_map[1]}** {selector.match1_map[0]} 🔹\n\n"
+            final_summary += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            # Match 2 - Winner picks between two options  
+            final_summary += "### 🥈 Match 2\n"
+            final_summary += "### Winner chooses between\n\n"
+            final_summary += f"## {selector.match2_map_a[0]} **{selector.match2_map_a[1]}** {selector.match2_map_a[0]}    {selector.match2_map_b[0]} **{selector.match2_map_b[1]}** {selector.match2_map_b[0]}\n\n"
+            
+            # Show shared tags with pill styling
+            shared_tags = set(selector.match2_map_a[2]).intersection(set(selector.match2_map_b[2]))
+            if shared_tags:
+                tag_pills = " ".join([f"`{tag}`" for tag in shared_tags])
+                final_summary += f"🏷️ *Connected by:* {tag_pills}\n\n"
+            
+            final_summary += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            final_summary += "# 🎯 Good luck in your Worms battles!"
             
             await message.edit(content=final_summary)
         else:

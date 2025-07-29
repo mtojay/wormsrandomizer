@@ -6,6 +6,8 @@ services:
     container_name: worms-discord-bot
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+    volumes:
+      - ./maps.json:/app/maps.json:ro  # Mount maps.json as read-only
     restart: unless-stopped
     networks:
       - bot-network

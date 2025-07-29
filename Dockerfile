@@ -19,8 +19,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and configuration
 COPY bot.py .
+COPY maps.json .
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash botuser

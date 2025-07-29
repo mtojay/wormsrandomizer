@@ -1,0 +1,44 @@
+{
+  "maps": [
+    {
+      "emoji": "🏰",
+      "name": "Burg",
+      "tags": ["Burg","Haus","Rakete","Esel","Schiff","Reaktor"]
+    },
+    {
+      "emoji": "🏠",
+      "name": "Haus",
+      "tags": ["Haus","Burg","Rakete","Baum","Pilz","Esel","Schiff","Reaktor"]
+    },
+    {
+      "emoji": "🚀",
+      "name": "Rakete",
+      "tags": ["Haus","Burg","Rakete","Baum","Pilz","Esel","Schiff","Reaktor"]
+    },
+    {
+      "emoji": "🌳",
+      "name": "Baum",
+      "tags": ["Haus","Rakete","Baum","Pilz","Esel"]
+    },
+    {
+      "emoji": "🍄",
+      "name": "Pilz",
+      "tags": ["Haus","Rakete","Baum","Pilz","Esel"]
+    },
+    {
+      "emoji": "🐴",
+      "name": "Esel",
+      "tags": ["Haus","Burg","Rakete","Baum","Pilz","Esel","Schiff","Reaktor"]
+    },
+    {
+      "emoji": "🚢",
+      "name": "Schiff",
+      "tags": ["Burg","Haus","Rakete","Esel","Schiff","Reaktor"]
+    },
+    {
+      "emoji": "☢️",
+      "name": "Reaktor",
+      "tags": ["Burg","Haus","Rakete","Esel","Schiff","Reaktor"]
+    }
+  ]
+}
